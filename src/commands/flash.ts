@@ -31,50 +31,14 @@ async function requireProbeRs(): Promise<boolean> {
   return false;
 }
 
-// Searches target/{targetTriple}/release then /debug for ELF binaries.
-// Returns the path if exactly one is found, shows a picker if multiple, null if none.
+// Find a way to find elf files for rust projects,
+// there is access to the target but not the exact profile the build did
+// Or prompt user to setup dir
 async function findElfBinary(
   workspaceRoot: string,
   targetTriple: string
 ): Promise<string | null> {
-  const ELF_MAGIC = [0x7f, 0x45, 0x4c, 0x46];
-  const profiles = ['release', 'debug'];
-
-  for (const profile of profiles) {
-    const dir = path.join(workspaceRoot, 'target', targetTriple, profile);
-    let entries: string[];
-    try {
-      entries = await fs.readdir(dir);
-    } catch {
-      continue;
-    }
-
-    const elfs: string[] = [];
-    for (const name of entries) {
-      if (name.endsWith('.d') || name.endsWith('.rlib') || name.endsWith('.rmeta')) continue;
-      const filePath = path.join(dir, name);
-      try {
-        const buf = Buffer.alloc(4);
-        const fh = await fs.open(filePath, 'r');
-        await fh.read(buf, 0, 4, 0);
-        await fh.close();
-        if (ELF_MAGIC.every((b, i) => buf[i] === b)) {
-          elfs.push(filePath);
-        }
-      } catch {
-        continue;
-      }
-    }
-
-    if (elfs.length === 1) return elfs[0];
-    if (elfs.length > 1) {
-      const picked = await vscode.window.showQuickPick(
-        elfs.map((p) => path.relative(workspaceRoot, p)),
-        { placeHolder: 'Multiple binaries found — pick one to flash' }
-      );
-      return picked ? path.join(workspaceRoot, picked) : null;
-    }
-  }
+ // TODO
 
   return null;
 }

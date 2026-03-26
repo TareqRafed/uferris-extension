@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 import * as fs from 'fs/promises';
-import { requireInPath } from '../checks';
+import * as path from 'path';
 import { selectBoard } from './selectBoard';
 import { SUPPORTED_MCUS } from '../boards';
 
@@ -31,22 +31,60 @@ async function requireProbeRs(): Promise<boolean> {
   return false;
 }
 
-async function readPackageName(workspaceRoot: string): Promise<string | null> {
-  try {
-    const content = await fs.readFile(`${workspaceRoot}/Cargo.toml`, 'utf8');
-    const match = content.match(/^\s*name\s*=\s*"([^"]+)"/m);
-    return match?.[1] ?? null;
-  } catch {
-    return null;
+// Searches target/{targetTriple}/release then /debug for ELF binaries.
+// Returns the path if exactly one is found, shows a picker if multiple, null if none.
+async function findElfBinary(
+  workspaceRoot: string,
+  targetTriple: string
+): Promise<string | null> {
+  const ELF_MAGIC = [0x7f, 0x45, 0x4c, 0x46];
+  const profiles = ['release', 'debug'];
+
+  for (const profile of profiles) {
+    const dir = path.join(workspaceRoot, 'target', targetTriple, profile);
+    let entries: string[];
+    try {
+      entries = await fs.readdir(dir);
+    } catch {
+      continue;
+    }
+
+    const elfs: string[] = [];
+    for (const name of entries) {
+      if (name.endsWith('.d') || name.endsWith('.rlib') || name.endsWith('.rmeta')) continue;
+      const filePath = path.join(dir, name);
+      try {
+        const buf = Buffer.alloc(4);
+        const fh = await fs.open(filePath, 'r');
+        await fh.read(buf, 0, 4, 0);
+        await fh.close();
+        if (ELF_MAGIC.every((b, i) => buf[i] === b)) {
+          elfs.push(filePath);
+        }
+      } catch {
+        continue;
+      }
+    }
+
+    if (elfs.length === 1) return elfs[0];
+    if (elfs.length > 1) {
+      const picked = await vscode.window.showQuickPick(
+        elfs.map((p) => path.relative(workspaceRoot, p)),
+        { placeHolder: 'Multiple binaries found — pick one to flash' }
+      );
+      return picked ? path.join(workspaceRoot, picked) : null;
+    }
   }
+
+  return null;
 }
 
 // Flash flow:
 //   1. check probe-rs in PATH   → offer cargo install if missing
 //   2. require workspace open   → error if not
-//   3. board picker (current pre-listed)
-//   4. read package name from Cargo.toml
-//   5. run: probe-rs flash --chip {probeChip} target/{triple}/release/{name}
+//   3. board picker (only if no board saved)
+//   4. discover ELF in target/{triple}/release then /debug
+//   5. run: probe-rs flash --chip {probeChip} {elfPath}
 export async function flash(): Promise<void> {
   if (!await requireProbeRs()) {
     return;
@@ -60,7 +98,7 @@ export async function flash(): Promise<void> {
 
   const workspaceRoot = workspaceFolders[0].uri.fsPath;
   const currentMcuId = vscode.workspace.getConfiguration('uferris').get<string>('targetMcu');
-  const mcuId = await selectBoard(currentMcuId);
+  const mcuId = currentMcuId ?? await selectBoard(undefined);
   if (!mcuId) return;
 
   const mcu = SUPPORTED_MCUS.find((m) => m.id === mcuId);
@@ -71,15 +109,11 @@ export async function flash(): Promise<void> {
     return;
   }
 
-  const packageName = await readPackageName(workspaceRoot);
-  if (!packageName) {
-    vscode.window.showErrorMessage(
-      'Cargo.toml not found in workspace root. Open a Rust project to flash.'
-    );
+  const elfPath = await findElfBinary(workspaceRoot, mcu.targetTriple);
+  if (!elfPath) {
+    vscode.window.showErrorMessage('No compiled binary found. Run Build first.');
     return;
   }
-
-  const binaryPath = `target/${mcu.targetTriple}/release/${packageName}`;
 
   const task = new vscode.Task(
     { type: 'uferris', task: 'flash' },
@@ -87,7 +121,7 @@ export async function flash(): Promise<void> {
     'flash',
     'uferris',
     new vscode.ShellExecution(
-      `probe-rs flash --chip ${mcu.probeChip} ${binaryPath}`,
+      `probe-rs flash --chip ${mcu.probeChip} ${elfPath}`,
       { cwd: workspaceRoot }
     )
   );

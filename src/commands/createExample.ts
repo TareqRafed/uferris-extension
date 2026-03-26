@@ -1,5 +1,4 @@
 import * as vscode from 'vscode';
-import * as path from 'path';
 import { listExamplesForBoard, downloadExample } from '../github';
 import { selectBoard } from './selectBoard';
 
@@ -7,7 +6,7 @@ import { selectBoard } from './selectBoard';
 //   1. require workspace open
 //   2. board picker (current board pre-listed, optional — Escape cancels)
 //   3. fetch example list from GitHub → QuickPick
-//   4. download full project directory into {workspace}/{exampleName}/
+//   4. download full project directory into workspace root (".")
 export async function createExample(): Promise<void> {
   const workspaceFolders = vscode.workspace.workspaceFolders;
   if (!workspaceFolders?.length) {
@@ -41,10 +40,8 @@ export async function createExample(): Promise<void> {
   });
   if (!selectedExample) return;
 
-  const destDir = path.join(workspaceRoot, selectedExample);
-
   try {
-    await downloadExample(selectedBoardId, selectedExample, destDir);
+    await downloadExample(selectedBoardId, selectedExample, workspaceRoot);
   } catch (err) {
     vscode.window.showErrorMessage(
       `Failed to download example: ${err instanceof Error ? err.message : String(err)}`
@@ -52,7 +49,5 @@ export async function createExample(): Promise<void> {
     return;
   }
 
-  vscode.window.showInformationMessage(
-    `Example "${selectedExample}" created at ${destDir}`
-  );
+  vscode.window.showInformationMessage(`Example "${selectedExample}" created.`);
 }

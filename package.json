@@ -1,0 +1,75 @@
+{
+  "name": "uferris-extension",
+  "displayName": "uFerris",
+  "description": "VS Code extension for the uFerris learning board",
+  "version": "0.1.0",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "uferris.build",
+        "title": "Build",
+        "category": "uFerris"
+      },
+      {
+        "command": "uferris.flash",
+        "title": "Flash",
+        "category": "uFerris"
+      },
+      {
+        "command": "uferris.selectBoard",
+        "title": "Select Board",
+        "category": "uFerris"
+      },
+      {
+        "command": "uferris.createExample",
+        "title": "Create Example",
+        "category": "uFerris"
+      }
+    ],
+    "configuration": {
+      "title": "uFerris",
+      "properties": {
+        "uferris.targetMcu": {
+          "type": "string",
+          "description": "Selected MCU for the uFerris board",
+          "enum": [
+            "rp2040",
+            "esp32c3"
+          ],
+          "enumDescriptions": [
+            "Xiao RP2040",
+            "Xiao ESP32-C3"
+          ]
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "test": "jest",
+    "lint": "eslint src --ext ts"
+  },
+  "devDependencies": {
+    "@types/jest": "^29.5.0",
+    "@types/node": "^18.0.0",
+    "@types/vscode": "^1.85.0",
+    "@typescript-eslint/eslint-plugin": "^6.0.0",
+    "@typescript-eslint/parser": "^6.0.0",
+    "eslint": "^8.0.0",
+    "jest": "^29.7.0",
+    "ts-jest": "^29.1.0",
+    "typescript": "^5.3.0"
+  },
+  "dependencies": {
+    "which": "^6.0.1"
+  }
+}

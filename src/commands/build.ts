@@ -6,7 +6,7 @@ import { SUPPORTED_MCUS } from '../boards';
 // Build flow:
 //   1. check fork in PATH       → error if missing
 //   2. check docker or podman   → error if neither found
-//   3. board picker (current board pre-listed, Escape cancels)
+//   3. use saved board if set; otherwise show board picker
 //   4. run: fork build -c {forkTarget}
 export async function build(): Promise<void> {
   if (!await requireInPath('fork', 'fork build tool not found. Install it manually.')) return;
@@ -14,7 +14,7 @@ export async function build(): Promise<void> {
 
   const config = vscode.workspace.getConfiguration('uferris');
   const currentMcuId = config.get<string>('targetMcu');
-  const mcuId = await selectBoard(currentMcuId);
+  const mcuId = currentMcuId ?? await selectBoard(undefined);
   if (!mcuId) return;
 
   const mcu = SUPPORTED_MCUS.find((m) => m.id === mcuId);

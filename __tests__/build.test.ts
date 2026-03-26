@@ -67,25 +67,15 @@ describe('build', () => {
     expect(mockExecuteTask).not.toHaveBeenCalled();
   });
 
-  it('runs fork build with the correct forkTarget for the selected MCU', async () => {
+  it('runs fork build with the correct forkTarget when MCU is already saved', async () => {
     withForkAndDocker();
     mockGetConfig.mockReturnValue({ get: jest.fn().mockReturnValue('rp2040'), update: jest.fn() });
-    mockSelectBoard.mockResolvedValue('rp2040');
 
     await build();
 
+    expect(mockSelectBoard).not.toHaveBeenCalled();
     expect(vscode.ShellExecution).toHaveBeenCalledWith('fork build -c rp2040');
     expect(mockExecuteTask).toHaveBeenCalledTimes(1);
-  });
-
-  it('passes the current MCU to the board picker as default', async () => {
-    withForkAndDocker();
-    mockGetConfig.mockReturnValue({ get: jest.fn().mockReturnValue('rp2040'), update: jest.fn() });
-    mockSelectBoard.mockResolvedValue('rp2040');
-
-    await build();
-
-    expect(mockSelectBoard).toHaveBeenCalledWith('rp2040');
   });
 
   it('shows error for unrecognised MCU id returned by picker', async () => {

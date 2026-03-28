@@ -2,7 +2,7 @@ import * as fs from 'fs/promises';
 import * as path from 'path';
 import { getJson, getText } from './fetcher';
 
-const REPO_OWNER = 'uFerris-rs';
+const REPO_OWNER = 'TareqRafed';
 const REPO_NAME = 'uferris-extension';
 const BRANCH = 'main';
 const API_BASE = `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents`;
